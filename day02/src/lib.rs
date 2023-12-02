@@ -48,6 +48,12 @@ impl FromStr for CubeSet {
     }
 }
 
+impl CubeSet {
+    fn power(&self) -> u32 {
+        self.red * self.green * self.blue
+    }
+}
+
 #[derive(Debug)]
 struct Game {
     number: u32,
@@ -91,6 +97,18 @@ impl Game {
             .iter()
             .all(|set| set.red <= bag.red && set.green <= bag.green && set.blue <= bag.blue)
     }
+
+    fn min_cubes(&self) -> CubeSet {
+        let mut min_cubes = CubeSet::default();
+
+        for draw in self.draws.iter() {
+            min_cubes.red = min_cubes.red.max(draw.red);
+            min_cubes.green = min_cubes.green.max(draw.green);
+            min_cubes.blue = min_cubes.blue.max(draw.blue);
+        }
+
+        min_cubes
+    }
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
@@ -109,7 +127,11 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    unimplemented!("input file: {:?}", input)
+    let power_sum = parse::<Game>(input)?
+        .map(|game| game.min_cubes().power())
+        .sum::<u32>();
+    println!("sum of powers of min sets (pt 2): {power_sum}");
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -33,10 +33,30 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    let (seeds, maps) = parse_two_phase::<SeedRanges, Map>(input)?;
-    let maps = maps.collect::<Vec<_>>();
-    // note: we depend on the input file's map ordering being appropriate, allowing a direct pass-through.
-    todo!()
+    let (ranges, maps) = parse_two_phase::<SeedRanges, Map>(input)?;
+    let mut ranges = ranges.0;
+
+    // note: we depend on the input file's map ordering being appropriate,
+    // allowing us to funnel the output of one stage directly into the input of
+    // the next.
+
+    for map in maps {
+        let mut next_ranges = Vec::with_capacity(ranges.len());
+
+        for range in ranges {
+            next_ranges.extend(map.apply_range(range));
+        }
+
+        ranges = next_ranges;
+    }
+
+    let lowest_location = ranges
+        .iter()
+        .map(|range| range.start)
+        .min()
+        .ok_or(Error::NoSolution)?;
+    println!("lowest location (pt 2): {lowest_location}");
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]

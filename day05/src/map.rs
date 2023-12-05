@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, str::FromStr};
+use std::str::FromStr;
 
 use crate::{map_entry::MapEntry, seed_ranges::SeedRange, Error};
 

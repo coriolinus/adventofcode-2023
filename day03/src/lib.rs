@@ -1,8 +1,9 @@
 use aoclib::geometry::{
     map::{tile::DisplayWidth, Map},
+    point::PointTrait,
     Direction, MapConversionErr, Point,
 };
-use std::{fmt, path::Path, str::FromStr};
+use std::{collections::HashSet, fmt, ops::Index, path::Path, str::FromStr};
 
 #[derive(Clone, Copy, strum::EnumIs)]
 enum Tile {
@@ -159,7 +160,51 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    unimplemented!("input file: {:?}", input)
+    let map = <Map<Tile> as TryFrom<_>>::try_from(input)?;
+    let numbers = Number::find(&map).collect::<Vec<_>>();
+
+    // construct a new map overlay: at positions corresponding to a number on the map,
+    // show the index of that number
+    let mut number_idx_overlay = Map::<Option<usize>>::new(map.width(), map.height());
+    for (idx, number) in numbers.iter().enumerate() {
+        let n_digits = (1 + number.right.x - number.left.x) as usize;
+        let (dx, dy) = Direction::Right.deltas();
+        for digit_position in map.project(number.left, dx, dy).take(n_digits) {
+            number_idx_overlay[digit_position] = Some(idx);
+        }
+    }
+
+    // the rest of this is not the way I'd usually write this code, but I am DONE with day 3 right now
+    let mut sum_of_gear_ratios = 0;
+    for (point, tile) in map.iter() {
+        if matches!(tile, Tile::Symbol('*')) {
+            // we have a potential gear
+            let mut adjacent_number_indices = HashSet::new();
+            for adj in point.adjacent() {
+                if let Some(idx) = number_idx_overlay.index(adj) {
+                    adjacent_number_indices.insert(*idx);
+                }
+            }
+            if adjacent_number_indices.len() != 2 {
+                // whatever, we don't have the right number of distinct adjacent part numbers
+                continue;
+            }
+            let (left, right) = {
+                let mut iter = adjacent_number_indices.into_iter();
+                let left = iter.next().unwrap();
+                let right = iter.next().unwrap();
+                debug_assert_eq!(iter.next(), None);
+                (left, right)
+            };
+            let left = numbers[left].value;
+            let right = numbers[right].value;
+            let gear_ratio = left * right;
+            sum_of_gear_ratios += gear_ratio;
+        }
+    }
+
+    println!("sum of gear ratios (pt 2): {sum_of_gear_ratios}");
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -2,10 +2,12 @@ use std::path::Path;
 
 use aoclib::input::parse_two_phase;
 use map::Map;
+use seed_ranges::SeedRanges;
 use seeds::Seeds;
 
 mod map;
 mod map_entry;
+mod seed_ranges;
 mod seeds;
 
 pub fn part1(input: &Path) -> Result<(), Error> {
@@ -31,7 +33,10 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    unimplemented!("input file: {:?}", input)
+    let (seeds, maps) = parse_two_phase::<SeedRanges, Map>(input)?;
+    let maps = maps.collect::<Vec<_>>();
+    // note: we depend on the input file's map ordering being appropriate, allowing a direct pass-through.
+    todo!()
 }
 
 #[derive(Debug, thiserror::Error)]

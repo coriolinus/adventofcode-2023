@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{map_entry::MapEntry, Error};
+use crate::{map_entry::MapEntry, seed_ranges::SeedRange, Error};
 
 #[derive(Debug)]
 pub struct Map {
@@ -59,6 +59,10 @@ impl Map {
             }
         }
         value
+    }
+
+    pub fn apply_range(&self, range: SeedRange) -> Vec<SeedRange> {
+        todo!()
     }
 }
 

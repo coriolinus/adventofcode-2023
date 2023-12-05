@@ -1,16 +1,24 @@
-use std::str::FromStr;
+use std::{
+    ops::{Add, AddAssign},
+    str::FromStr,
+};
 
 use crate::Error;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SeedRange {
     pub(crate) start: i64,
     pub(crate) length: i64,
 }
 
 impl SeedRange {
+    #[inline]
+    pub fn end(&self) -> i64 {
+        self.start + self.length
+    }
+
     pub fn contains(&self, value: i64) -> bool {
-        (self.start..(self.start + self.length)).contains(&value)
+        (self.start..self.end()).contains(&value)
     }
 
     /// Split this seed range at a particular value.
@@ -33,6 +41,21 @@ impl SeedRange {
             };
             (first, second)
         })
+    }
+}
+
+impl AddAssign<i64> for SeedRange {
+    fn add_assign(&mut self, rhs: i64) {
+        self.start += rhs;
+    }
+}
+
+impl Add<i64> for SeedRange {
+    type Output = Self;
+
+    fn add(mut self, rhs: i64) -> Self::Output {
+        self += rhs;
+        self
     }
 }
 

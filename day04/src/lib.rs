@@ -6,7 +6,7 @@ struct Card {
     n: u32,
     winning: Vec<u8>,
     have: Vec<u8>,
-    points: u32,
+    n_matching: u8,
 }
 
 impl FromStr for Card {
@@ -40,28 +40,30 @@ impl FromStr for Card {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_err| Error::Parse("converting have values to ints".into()))?;
 
-        card.compute_points();
+        for winner in &card.winning {
+            if card.have.contains(winner) {
+                card.n_matching += 1;
+            }
+        }
+
         Ok(card)
     }
 }
 
 impl Card {
-    fn compute_points(&mut self) {
-        self.points = 0;
-        for winner in &self.winning {
-            if self.have.contains(winner) {
-                if self.points > 0 {
-                    self.points *= 2;
-                } else {
-                    self.points = 1;
-                }
-            }
+    fn compute_points(&self) -> u32 {
+        if self.n_matching > 0 {
+            1 << (self.n_matching - 1)
+        } else {
+            0
         }
     }
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    let points = parse::<Card>(input)?.map(|card| card.points).sum::<u32>();
+    let points = parse::<Card>(input)?
+        .map(|card| card.compute_points())
+        .sum::<u32>();
     println!("total points (pt 1): {points}");
     Ok(())
 }

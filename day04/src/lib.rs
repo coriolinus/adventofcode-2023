@@ -69,7 +69,16 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    unimplemented!("input file: {:?}", input)
+    let cards = parse::<Card>(input)?.collect::<Vec<_>>();
+    let mut n_copies = vec![1; cards.len()];
+    for idx in 0..cards.len() {
+        for scored_idx in (idx + 1)..(idx + 1 + cards[idx].n_matching as usize) {
+            n_copies[scored_idx] += n_copies[idx];
+        }
+    }
+    let total_scratchcards = n_copies.iter().copied().sum::<u32>();
+    println!("total scratchcards (pt 2): {total_scratchcards}");
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]

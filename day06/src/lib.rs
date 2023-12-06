@@ -16,10 +16,10 @@ fn parse(input: impl AsRef<Path>) -> Result<Vec<Race>, Error> {
 
     let times = time_line
         .split_ascii_whitespace()
-        .map(|token| token.parse::<u32>().ok());
+        .map(|token| token.parse::<u64>().ok());
     let distances = distance_line
         .split_ascii_whitespace()
-        .map(|token| token.parse::<u32>().ok());
+        .map(|token| token.parse::<u64>().ok());
 
     let races = times
         .zip_eq(distances)
@@ -33,34 +33,62 @@ fn parse(input: impl AsRef<Path>) -> Result<Vec<Race>, Error> {
     Ok(races)
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct Race {
-    time: u32,
-    distance: u32,
+    time: u64,
+    distance: u64,
 }
 
 impl Race {
-    fn distance_for(&self, hold_time: u32) -> u32 {
+    fn distance_for(&self, hold_time: u64) -> u64 {
         let speed = hold_time;
         let travel_time = self.time - hold_time;
         travel_time * speed
     }
 
-    fn ways_to_win(&self) -> u32 {
+    fn ways_to_win(&self) -> u64 {
         (0..self.time)
             .filter(|&time| self.distance_for(time) > self.distance)
             .count() as _
+    }
+
+    fn combine_lexicographically(left: Self, right: Self) -> Self {
+        fn next_power_of_10(value: u64) -> u64 {
+            if value == 0 {
+                return 1;
+            }
+            let mut digits = value.ilog10();
+            if value > 10_u64.pow(digits) {
+                digits += 1;
+            }
+            10_u64.pow(digits)
+        }
+        /// merge these numbers lexicographically
+        fn merge(left: u64, right: u64) -> u64 {
+            (left * next_power_of_10(right)) + right
+        }
+        Self {
+            time: merge(left.time, right.time),
+            distance: merge(left.distance, right.distance),
+        }
     }
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
     let races = parse(input)?;
-    let record_beating_product = races.iter().map(Race::ways_to_win).product::<u32>();
+    let record_beating_product = races.iter().map(Race::ways_to_win).product::<u64>();
     println!("record beating product (pt 1): {record_beating_product}");
     Ok(())
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    unimplemented!("input file: {:?}", input)
+    let race = parse(input)?
+        .into_iter()
+        .reduce(Race::combine_lexicographically)
+        .ok_or(Error::NoSolution)?;
+    let ways_to_win = race.ways_to_win();
+    println!("ways to win merged (pt 2): {ways_to_win}");
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -90,5 +118,22 @@ mod tests {
             distance: 9,
         };
         assert_eq!(race.ways_to_win(), 4);
+    }
+
+    #[test]
+    fn race_merge() {
+        let left = Race {
+            time: 1,
+            distance: 34,
+        };
+        let right = Race {
+            time: 2,
+            distance: 56,
+        };
+        let expect = Race {
+            time: 12,
+            distance: 3456,
+        };
+        assert_eq!(Race::combine_lexicographically(left, right), expect);
     }
 }

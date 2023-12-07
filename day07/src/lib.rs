@@ -191,7 +191,7 @@ where
     }
 }
 
-fn compute_total_winnings<Card>(input: &Path) -> Result<(), Error>
+fn compute_total_winnings<Card>(input: &Path, part: u8) -> Result<(), Error>
 where
     Card: std::fmt::Debug + FromStr + Copy + Ord,
     Error: From<<Card as FromStr>::Err>,
@@ -207,16 +207,16 @@ where
             rank as u64 * *bid
         })
         .sum::<u64>();
-    println!("total winnings (pt 1): {total_winnings}");
+    println!("total winnings (pt {part}): {total_winnings}");
     Ok(())
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    compute_total_winnings::<CardPt1>(input)
+    compute_total_winnings::<CardPt1>(input, 1)
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    compute_total_winnings::<CardPt2>(input)
+    compute_total_winnings::<CardPt2>(input, 2)
 }
 
 #[derive(Debug, thiserror::Error)]

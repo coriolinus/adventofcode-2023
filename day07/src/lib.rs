@@ -14,7 +14,7 @@ use std::{cmp::Reverse, path::Path, str::FromStr};
     parse_display::Display,
     parse_display::FromStr,
 )]
-enum Card {
+enum CardPt1 {
     #[display("A")]
     Ace,
     #[display("K")]
@@ -43,6 +43,47 @@ enum Card {
     Two,
 }
 
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    parse_display::Display,
+    parse_display::FromStr,
+)]
+enum CardPt2 {
+    #[display("A")]
+    Ace,
+    #[display("K")]
+    King,
+    #[display("Q")]
+    Queen,
+    #[display("T")]
+    Ten,
+    #[display("9")]
+    Nine,
+    #[display("8")]
+    Eight,
+    #[display("7")]
+    Seven,
+    #[display("6")]
+    Six,
+    #[display("5")]
+    Five,
+    #[display("4")]
+    Four,
+    #[display("3")]
+    Three,
+    #[display("2")]
+    Two,
+    #[display("J")]
+    Joker,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum HandType {
     FiveOfAKind,
@@ -54,8 +95,8 @@ enum HandType {
     HighCard,
 }
 
-impl From<[Card; 5]> for HandType {
-    fn from(cards: [Card; 5]) -> Self {
+impl From<[CardPt1; 5]> for HandType {
+    fn from(cards: [CardPt1; 5]) -> Self {
         let counter = cards.into_iter().collect::<Counter<_>>();
         debug_assert_eq!(counter.values().sum::<usize>(), 5);
         let frequencies = counter.most_common_ordered();
@@ -71,13 +112,40 @@ impl From<[Card; 5]> for HandType {
     }
 }
 
+impl From<[CardPt2; 5]> for HandType {
+    fn from(cards: [CardPt2; 5]) -> Self {
+        let mut counter = cards.into_iter().collect::<Counter<_>>();
+        debug_assert_eq!(counter.values().sum::<usize>(), 5);
+        let joker_count = counter.remove(&CardPt2::Joker).unwrap_or_default();
+        let mut frequencies = counter.most_common_ordered();
+        if let Some((_, count)) = frequencies.get_mut(0) {
+            *count += joker_count;
+        } else {
+            frequencies.push((CardPt2::Joker, joker_count));
+        }
+        match frequencies.as_slice() {
+            &[(_, 5)] => Self::FiveOfAKind,
+            &[(_, 4), ..] => Self::FourOfAKind,
+            &[(_, 3), (_, 2)] => Self::FullHouse,
+            &[(_, 3), ..] => Self::ThreeOfAKind,
+            &[(_, 2), (_, 2), ..] => Self::TwoPair,
+            &[(_, 2), ..] => Self::OnePair,
+            _ => Self::HighCard,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct Hand {
+struct Hand<Card> {
     type_: HandType,
     cards: [Card; 5],
 }
 
-impl Hand {
+impl<Card> Hand<Card>
+where
+    Card: std::fmt::Debug + Copy,
+    [Card; 5]: Into<HandType>,
+{
     fn new(cards: impl IntoIterator<Item = Card>) -> Result<Self, Error> {
         let cards: [Card; 5] = cards
             .into_iter()
@@ -90,12 +158,17 @@ impl Hand {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct HandWithBid {
-    hand: Hand,
+struct HandWithBid<Card> {
+    hand: Hand<Card>,
     bid: u64,
 }
 
-impl FromStr for HandWithBid {
+impl<Card> FromStr for HandWithBid<Card>
+where
+    Card: std::fmt::Debug + FromStr + Copy,
+    Error: From<<Card as FromStr>::Err>,
+    [Card; 5]: Into<HandType>,
+{
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -118,8 +191,13 @@ impl FromStr for HandWithBid {
     }
 }
 
-pub fn part1(input: &Path) -> Result<(), Error> {
-    let mut hand_bids = parse::<HandWithBid>(input)?.collect::<Vec<_>>();
+fn compute_total_winnings<Card>(input: &Path) -> Result<(), Error>
+where
+    Card: std::fmt::Debug + FromStr + Copy + Ord,
+    Error: From<<Card as FromStr>::Err>,
+    [Card; 5]: Into<HandType>,
+{
+    let mut hand_bids = parse::<HandWithBid<Card>>(input)?.collect::<Vec<_>>();
     hand_bids.sort_by_key(|hand_bid| Reverse(hand_bid.hand));
     let total_winnings = hand_bids
         .iter()
@@ -133,8 +211,12 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn part1(input: &Path) -> Result<(), Error> {
+    compute_total_winnings::<CardPt1>(input)
+}
+
 pub fn part2(input: &Path) -> Result<(), Error> {
-    todo!()
+    compute_total_winnings::<CardPt2>(input)
 }
 
 #[derive(Debug, thiserror::Error)]

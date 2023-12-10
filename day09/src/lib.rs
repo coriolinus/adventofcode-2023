@@ -4,7 +4,7 @@ use std::{path::Path, str::FromStr};
 type Item = i32;
 type Sequence = Vec<Item>;
 
-fn predict_next_value(sequence: &Sequence) -> Item {
+fn make_diffs(sequence: &Sequence) -> Sequence {
     let mut diffs = Vec::with_capacity(sequence.len() - 1);
     diffs.extend(sequence.windows(2).map(|window| {
         let [left, right] = window
@@ -12,6 +12,11 @@ fn predict_next_value(sequence: &Sequence) -> Item {
             .expect("`windows(2)` produces windows of size 2");
         right - left
     }));
+    diffs
+}
+
+fn predict_next_value(sequence: &Sequence) -> Item {
+    let diffs = make_diffs(sequence);
 
     let next_diff = if diffs.iter().all(|&d| d == 0) {
         0
@@ -20,6 +25,18 @@ fn predict_next_value(sequence: &Sequence) -> Item {
     };
 
     sequence.last().copied().unwrap_or_default() + next_diff
+}
+
+fn predict_prev_value(sequence: &Sequence) -> Item {
+    let diffs = make_diffs(sequence);
+
+    let prev_diff = if diffs.iter().all(|&d| d == 0) {
+        0
+    } else {
+        predict_prev_value(&diffs)
+    };
+
+    sequence.first().copied().unwrap_or_default() - prev_diff
 }
 
 // this should probably go into Aoclib
@@ -60,7 +77,12 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    unimplemented!("input file: {:?}", input)
+    let sequences = parse::<SpaceSep<Item>>(input)?
+        .map(SpaceSep::into_inner)
+        .collect::<Vec<_>>();
+    let soev = sequences.iter().map(predict_prev_value).sum::<Item>();
+    println!("sum of extrapolated values (pt 2): {soev}");
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]

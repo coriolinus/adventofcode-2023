@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{input::NodeDefinition, Error};
 
@@ -77,5 +77,9 @@ impl Network {
 
     pub fn name_of(&self, position: usize) -> Option<&str> {
         self.name_for.get(&position).map(String::as_str)
+    }
+
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.names.keys().map(String::as_str)
     }
 }

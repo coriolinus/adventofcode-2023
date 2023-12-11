@@ -50,16 +50,6 @@ impl Tile {
             _ => None,
         }
     }
-
-    fn is_parallel(self, direction: Direction) -> bool {
-        matches!(
-            (self, direction),
-            (Self::Vertical, Direction::Down)
-                | (Self::Vertical, Direction::Up)
-                | (Self::Horizontal, Direction::Left)
-                | (Self::Horizontal, Direction::Right)
-        )
-    }
 }
 
 impl DisplayWidth for Tile {
@@ -209,102 +199,57 @@ type StyleMap = aoclib::geometry::Map<TileStyle>;
 /// inside or outside a path: project a line in any arbitrary direction. If it
 /// crosses the path an odd number of times, it's inside; otherwise, it's
 /// outside.
-///
-/// We need to modify the algorithm just a little, to exclude tiles which are
-/// parallel to our direction of projection, but that's trivial.
-fn is_inside(map: &Map, tile_styles: &StyleMap, point: Point) -> bool {
-    fn is_inside(
-        map: &Map,
-        tile_styles: &StyleMap,
-        point: Point,
-        projection_direction: Direction,
-    ) -> bool {
-        assert_eq!(
-            map.bottom_left(),
-            tile_styles.bottom_left(),
-            "map and tile bottom left coords must agree"
-        );
-        assert_eq!(
-            map.top_right(),
-            tile_styles.top_right(),
-            "map and tile top right coords must agree"
-        );
+fn flood_inside(map: &Map, tile_styles: &mut StyleMap) {
+    assert_eq!(
+        map.bottom_left(),
+        tile_styles.bottom_left(),
+        "map and tile bottom left coords must agree"
+    );
+    assert_eq!(
+        map.top_right(),
+        tile_styles.top_right(),
+        "map and tile top right coords must agree"
+    );
 
-        let mut half_open = None;
+    // we choose to flood diagonally, to simplify our logic; no need to care about parallelism
+    // as we will flood in the up-right direction, our start points must be the left and bottom edges
+    // it is unnecessary but aesthetically pleasing to organize our edge traversal contiguously
+    let left_edge = {
+        let (dx, dy) = Direction::Down.deltas();
+        map.project(map.top_left(), dx, dy)
+    };
+    let bottom_edge = {
+        let (dx, dy) = Direction::Right.deltas();
+        // start one to the right, to avoid double-counting the bottom-left point
+        map.project(map.bottom_left() + Direction::Right, dx, dy)
+    };
+    let edges = left_edge.chain(bottom_edge);
 
-        let (dx, dy) = projection_direction.deltas();
-        let crossing_count = map
-            .project(point, dx, dy)
-            .filter(|&point| {
-                tile_styles[point].is_main_loop() && !map[point].is_parallel(projection_direction)
-            })
-            .filter(|&point| {
-                match (
-                    half_open.take(),
-                    map[point].trace(projection_direction),
-                    map[point].trace(projection_direction.reverse()),
-                ) {
-                    (None, None, None) => {
-                        // we don't have a pending half-opening, and this point does not create a half opening,
-                        // so this must be perpendicular, which gives us a straightforward perpendicular crossing
-                        true
-                    }
-                    (None, Some(direction), None) => {
-                        // we don't have a pending half-opening, but this point creates a half opening
-                        // don't record it yet, but keep track of that half opening
-                        half_open = Some(direction);
-                        false
-                    }
-                    (Some(half_open), None, Some(half_close)) => {
-                        // we have a pending half opening, and a potential half closing
-                        assert!(
-                            half_open == half_close || half_open == half_close.reverse(),
-                            "mismatched open and close"
-                        );
-                        // if they are the same, then we don't count this close as a crossing; it backed off.
-                        // if they are different, we count this.
-                        half_open != half_close
-                    }
-                    state => {
-                        dbg!(state, point, map[point]);
-                        unreachable!("invalid state")
-                    }
+    let dx = Direction::Right.deltas().0 + Direction::Up.deltas().0;
+    let dy = Direction::Right.deltas().1 + Direction::Up.deltas().1;
+
+    for edge_point in edges {
+        let mut inside = false;
+        for point in map.project(edge_point, dx, dy) {
+            if tile_styles[point].is_main_loop() {
+                // the complex case: if this is a crossing, invert `inside`. Otherwise, don't.
+                debug_assert!(!matches!(map[point], Tile::Ground | Tile::Start));
+                let is_crossing = matches!(
+                    map[point],
+                    Tile::Horizontal | Tile::Vertical | Tile::Seven | Tile::L
+                );
+                if is_crossing {
+                    inside = !inside;
                 }
-            })
-            .count();
-
-        crossing_count % 2 != 0
-    }
-
-    #[cfg(not(debug_assertions))]
-    {
-        is_inside(map, tile_styles, point, Direction::Up)
-    }
-    #[cfg(debug_assertions)]
-    {
-        let inside: [bool; 4] = std::array::from_fn(|idx| {
-            // we should probably have a function like this in aoclib
-            let direction = match idx {
-                0 => Direction::Up,
-                1 => Direction::Right,
-                2 => Direction::Down,
-                3 => Direction::Left,
-                _ => unreachable!("array constructor will not over-call this fn"),
-            };
-            is_inside(map, tile_styles, point, direction)
-        });
-        match inside {
-            [true, true, true, true] => true,
-            [false, false, false, false] => false,
-            _ => {
-                let (dx, dy) = Direction::Up.deltas();
-                for point in tile_styles.project(point, dx, dy) {
-                    if tile_styles[point].is_main_loop() {
-                        dbg!(point, map[point]);
-                    }
-                }
-                dbg!(point, inside);
-                panic!("projecting in different directions gave differing results")
+            } else {
+                // the simple case: just assign according to the current side status
+                // nothing here changes the status
+                debug_assert!(tile_styles[point].is_unknown());
+                tile_styles[point] = if inside {
+                    TileStyle::Inside
+                } else {
+                    TileStyle::Outside
+                };
             }
         }
     }
@@ -336,16 +281,7 @@ pub fn part2(input: &Path) -> Result<(), Error> {
         tile_styles[point] = TileStyle::MainLoop;
     }
 
-    for point in tile_styles.points() {
-        if !tile_styles[point].is_unknown() {
-            continue;
-        }
-        tile_styles[point] = if is_inside(&map, &tile_styles, point) {
-            TileStyle::Inside
-        } else {
-            TileStyle::Outside
-        };
-    }
+    flood_inside(&map, &mut tile_styles);
 
     debug_assert!(!tile_styles.iter().any(|(_point, tile)| tile.is_unknown()));
 

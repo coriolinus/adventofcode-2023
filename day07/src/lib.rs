@@ -101,12 +101,12 @@ impl From<[CardPt1; 5]> for HandType {
         debug_assert_eq!(counter.values().sum::<usize>(), 5);
         let frequencies = counter.most_common_ordered();
         match frequencies.as_slice() {
-            &[(_, 5)] => Self::FiveOfAKind,
-            &[(_, 4), ..] => Self::FourOfAKind,
-            &[(_, 3), (_, 2)] => Self::FullHouse,
-            &[(_, 3), ..] => Self::ThreeOfAKind,
-            &[(_, 2), (_, 2), ..] => Self::TwoPair,
-            &[(_, 2), ..] => Self::OnePair,
+            [(_, 5)] => Self::FiveOfAKind,
+            [(_, 4), ..] => Self::FourOfAKind,
+            [(_, 3), (_, 2)] => Self::FullHouse,
+            [(_, 3), ..] => Self::ThreeOfAKind,
+            [(_, 2), (_, 2), ..] => Self::TwoPair,
+            [(_, 2), ..] => Self::OnePair,
             _ => Self::HighCard,
         }
     }
@@ -124,12 +124,12 @@ impl From<[CardPt2; 5]> for HandType {
             frequencies.push((CardPt2::Joker, joker_count));
         }
         match frequencies.as_slice() {
-            &[(_, 5)] => Self::FiveOfAKind,
-            &[(_, 4), ..] => Self::FourOfAKind,
-            &[(_, 3), (_, 2)] => Self::FullHouse,
-            &[(_, 3), ..] => Self::ThreeOfAKind,
-            &[(_, 2), (_, 2), ..] => Self::TwoPair,
-            &[(_, 2), ..] => Self::OnePair,
+            [(_, 5)] => Self::FiveOfAKind,
+            [(_, 4), ..] => Self::FourOfAKind,
+            [(_, 3), (_, 2)] => Self::FullHouse,
+            [(_, 3), ..] => Self::ThreeOfAKind,
+            [(_, 2), (_, 2), ..] => Self::TwoPair,
+            [(_, 2), ..] => Self::OnePair,
             _ => Self::HighCard,
         }
     }

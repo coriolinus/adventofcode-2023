@@ -502,7 +502,6 @@ dependencies = [
  "aoclib",
  "clap",
  "color-eyre",
- "itertools",
  "rstest",
  "tempfile",
  "thiserror",

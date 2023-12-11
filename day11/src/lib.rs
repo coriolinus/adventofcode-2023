@@ -1,5 +1,4 @@
 use aoclib::geometry::{Direction, Point};
-use itertools::Itertools;
 use std::path::Path;
 
 type Image = aoclib::geometry::map::Map<aoclib::geometry::map::tile::Bool>;
@@ -7,8 +6,8 @@ type Image = aoclib::geometry::map::Map<aoclib::geometry::map::tile::Bool>;
 #[derive(Debug)]
 struct ExpandingSpace {
     image: Image,
-    doubled_rows: Vec<i32>,
-    doubled_columns: Vec<i32>,
+    doubled_rows: Vec<u64>,
+    doubled_columns: Vec<u64>,
 }
 
 impl ExpandingSpace {
@@ -22,7 +21,7 @@ impl ExpandingSpace {
                 image
                     .project(point, dx, dy)
                     .all(|point| !bool::from(image[point]))
-                    .then_some(idx as i32)
+                    .then_some(idx as u64)
             })
             .collect();
         let doubled_columns = image
@@ -33,7 +32,7 @@ impl ExpandingSpace {
                 image
                     .project(point, dx, dy)
                     .all(|point| !bool::from(image[point]))
-                    .then_some(idx as i32)
+                    .then_some(idx as u64)
             })
             .collect();
 
@@ -44,7 +43,7 @@ impl ExpandingSpace {
         })
     }
 
-    fn expanded_distance_between(&self, a: Point, b: Point) -> i32 {
+    fn expanded_distance_between(&self, a: Point, b: Point, expansion_factor: u64) -> u64 {
         debug_assert!(
             bool::from(self.image[a]),
             "it is only interesting to count distances betweeen galaxies"
@@ -55,44 +54,50 @@ impl ExpandingSpace {
         );
 
         let row_range = {
-            let lower = a.y.min(b.y);
-            let upper = a.y.max(b.y);
+            let lower = a.y.min(b.y) as u64;
+            let upper = a.y.max(b.y) as u64;
             lower..upper
         };
         let col_range = {
-            let lower = a.x.min(b.x);
-            let upper = a.x.max(b.x);
+            let lower = a.x.min(b.x) as u64;
+            let upper = a.x.max(b.x) as u64;
             lower..upper
         };
-        (b - a).manhattan()
-            + self
-                .doubled_rows
-                .iter()
-                .filter(|&row| row_range.contains(row))
-                .count() as i32
-            + self
-                .doubled_columns
-                .iter()
-                .filter(|&col| col_range.contains(col))
-                .count() as i32
+        (b - a).manhattan() as u64
+            + expansion_factor
+                * (self
+                    .doubled_rows
+                    .iter()
+                    .filter(|&row| row_range.contains(row))
+                    .count() as u64
+                    + self
+                        .doubled_columns
+                        .iter()
+                        .filter(|&col| col_range.contains(col))
+                        .count() as u64)
+    }
+
+    fn space_between_galaxies(&self, expansion_factor: u64) -> u64 {
+        let galaxies = self
+            .image
+            .iter()
+            .filter_map(|(point, &is_galaxy)| bool::from(is_galaxy).then_some(point))
+            .collect::<Vec<_>>();
+        galaxies
+            .iter()
+            .enumerate()
+            .flat_map(|(idx, &a)| (idx + 1..galaxies.len()).map(move |bidx| (a, bidx)))
+            .map(|(a, bidx)| (a, galaxies[bidx]))
+            .map(|(a, b)| self.expanded_distance_between(a, b, expansion_factor))
+            .sum()
     }
 }
 
 // too high: 20627195
 pub fn part1(input: &Path) -> Result<(), Error> {
     let es = ExpandingSpace::parse(input)?;
-    let galaxies = es
-        .image
-        .iter()
-        .filter_map(|(point, &is_galaxy)| bool::from(is_galaxy).then_some(point))
-        .collect::<Vec<_>>();
-    let sum_of_dists = galaxies
-        .iter()
-        .cartesian_product(galaxies.iter())
-        .filter(|(a, b)| a < b)
-        .map(|(&a, &b)| es.expanded_distance_between(a, b))
-        .sum::<i32>();
-    println!("sum of dists (pt 1): {sum_of_dists}");
+    let space_between = es.space_between_galaxies(1);
+    println!("sum of dists (pt 1): {space_between}");
     Ok(())
 }
 
@@ -128,18 +133,31 @@ mod tests {
 #...#.....
 ";
 
+    fn example_input() -> ExpandingSpace {
+        let mut tempfile = NamedTempFile::new().unwrap();
+        write!(tempfile.as_file_mut(), "{}", EXAMPLE.trim_start()).unwrap();
+        let es = ExpandingSpace::parse(tempfile.path()).unwrap();
+        tempfile.close().unwrap();
+        es
+    }
+
     #[rstest]
     #[case("5 -> 9", Point::new(1, 4), Point::new(4, 0), 9)]
     #[case("1 -> 7", Point::new(3, 9), Point::new(7, 1), 15)]
     #[case("3 -> 6", Point::new(0, 7), Point::new(9, 3), 17)]
     #[case("8 -> 9", Point::new(0, 0), Point::new(4, 0), 5)]
-    fn example_pt1(#[case] name: &str, #[case] a: Point, #[case] b: Point, #[case] expect: i32) {
+    fn example_pt1(#[case] name: &str, #[case] a: Point, #[case] b: Point, #[case] expect: u64) {
         eprintln!("case {name}");
-        let mut tempfile = NamedTempFile::new().unwrap();
-        write!(tempfile.as_file_mut(), "{}", EXAMPLE.trim_start()).unwrap();
-        let es = ExpandingSpace::parse(tempfile.path()).unwrap();
-        tempfile.close().unwrap();
+        let es = example_input();
+        assert_eq!(es.expanded_distance_between(a, b, 1), expect);
+    }
 
-        assert_eq!(es.expanded_distance_between(a, b), expect);
+    #[rstest]
+    #[case(10, 1030)]
+    #[case(100, 8410)]
+    fn example_pt2(#[case] expansion_factor: u64, #[case] expect: u64) {
+        let es = example_input();
+        let sum_of_dists = es.space_between_galaxies(expansion_factor);
+        assert_eq!(sum_of_dists, expect);
     }
 }

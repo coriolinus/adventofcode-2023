@@ -8,7 +8,6 @@ edition = "2021"
 aoclib = { git = "https://github.com/coriolinus/aoclib.git" }
 clap = { version = "4.4.11", features = ["derive"] }
 color-eyre = "0.5.10"
-itertools = "0.12.0"
 rstest = { version = "0.18.2", default-features = false }
 thiserror = "1.0.22"
 

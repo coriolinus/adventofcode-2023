@@ -63,18 +63,21 @@ impl ExpandingSpace {
             let upper = a.x.max(b.x) as u64;
             lower..upper
         };
-        (b - a).manhattan() as u64
-            + expansion_factor
-                * (self
-                    .doubled_rows
-                    .iter()
-                    .filter(|&row| row_range.contains(row))
-                    .count() as u64
-                    + self
-                        .doubled_columns
-                        .iter()
-                        .filter(|&col| col_range.contains(col))
-                        .count() as u64)
+        let base_distance = (b - a).manhattan() as u64;
+        let expansion_factor = expansion_factor - 1;
+        let expanded_rows = expansion_factor
+            * self
+                .doubled_rows
+                .iter()
+                .filter(|&row| row_range.contains(row))
+                .count() as u64;
+        let expanded_cols = expansion_factor
+            * self
+                .doubled_columns
+                .iter()
+                .filter(|&col| col_range.contains(col))
+                .count() as u64;
+        base_distance + expanded_rows + expanded_cols
     }
 
     fn space_between_galaxies(&self, expansion_factor: u64) -> u64 {
@@ -96,13 +99,16 @@ impl ExpandingSpace {
 // too high: 20627195
 pub fn part1(input: &Path) -> Result<(), Error> {
     let es = ExpandingSpace::parse(input)?;
-    let space_between = es.space_between_galaxies(1);
+    let space_between = es.space_between_galaxies(2);
     println!("sum of dists (pt 1): {space_between}");
     Ok(())
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    unimplemented!("input file: {:?}", input)
+    let es = ExpandingSpace::parse(input)?;
+    let space_between = es.space_between_galaxies(1000000);
+    println!("sum of dists (pt 2): {space_between}");
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -149,7 +155,7 @@ mod tests {
     fn example_pt1(#[case] name: &str, #[case] a: Point, #[case] b: Point, #[case] expect: u64) {
         eprintln!("case {name}");
         let es = example_input();
-        assert_eq!(es.expanded_distance_between(a, b, 1), expect);
+        assert_eq!(es.expanded_distance_between(a, b, 2), expect);
     }
 
     #[rstest]

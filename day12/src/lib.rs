@@ -57,7 +57,7 @@ enum ParseUnsepError<E> {
     ChunkDivision(#[from] std::str::Utf8Error),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ConditionRecord {
     conditions: Conditions,
     damage_groups: DamageGroups,
@@ -175,5 +175,19 @@ mod tests {
         let condition_record = condition_record.parse::<ConditionRecord>().unwrap();
         let mappings = todo!();
         // assert_eq!(mappings, expect);
+    }
+
+    #[rstest]
+    #[case(".# 1", ".#?.#?.#?.#?.# 1,1,1,1,1")]
+    #[case(
+        "???.### 1,1,3",
+        "???.###????.###????.###????.###????.### 1,1,3,1,1,3,1,1,3,1,1,3,1,1,3"
+    )]
+    fn pt2_unfold(#[case] condition_record: &str, #[case] expect: &str) {
+        dbg!(condition_record);
+        let mut condition_record = condition_record.parse::<ConditionRecord>().unwrap();
+        condition_record.unfold();
+        let expect = expect.parse::<ConditionRecord>().unwrap();
+        assert_eq!(condition_record, expect);
     }
 }

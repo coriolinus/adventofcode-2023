@@ -1,11 +1,71 @@
 use aoclib::{geometry::tile::DisplayWidth, parse, CommaSep};
 use std::{
+    collections::HashMap,
+    ops::Shl,
     path::Path,
     str::{self, FromStr},
 };
 
+type Word = u128;
 type Conditions = Vec<Condition>;
 type DamageGroups = Vec<u8>;
+
+fn get_bit<I>(value: Word, idx: I) -> bool
+where
+    Word: Shl<I, Output = Word>,
+{
+    value & (1 << idx) != 0
+}
+
+fn set_bit<I>(value: Word, idx: I, bit_value: bool) -> Word
+where
+    Word: Shl<I, Output = Word>,
+{
+    if bit_value {
+        value | (1 << idx)
+    } else {
+        value & !(1 << idx)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct RegionFill<'a> {
+    bits_in_region: u8,
+    groups: &'a [u8],
+}
+
+/// A filled region is: for a given set of leftover groups, the number of ways we can fill this region
+type FilledRegion<'a> = HashMap<&'a [u8], u64>;
+
+/// For each region, how many ways, and what groups are leftover
+type RegionFillCache<'a> = HashMap<RegionFill<'a>, FilledRegion<'a>>;
+
+fn ways_to_fill_contiguous_region<'a>(
+    cache: &mut RegionFillCache<'a>,
+    region_fill: RegionFill<'a>,
+) {
+    // dynamic programming 101
+    // cases to consider:
+    // - we can fill the first group into this region
+    // - we can remove 1 from the region size (implicit additional 0 bytes at head) and fill the first group into the region
+    // - having done either of those previous things, can we consume more groups?
+
+    let cache_entry = cache.entry(region_fill).or_default();
+
+    let Some((first_group, rest)) = region_fill.groups.split_first() else {
+        // groups list was empty
+        // there is one way to handle this: all 0 bits
+        *cache_entry.entry(region_fill.groups).or_default() += 1;
+        return;
+    };
+    todo!()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct PartialApplication {
+    data: Word,
+    bits_set: u8,
+}
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, parse_display::FromStr, parse_display::Display, strum::EnumIs,
@@ -140,8 +200,14 @@ pub fn part2(input: &Path) -> Result<(), Error> {
         .map(|record| record.conditions.len())
         .max()
         .unwrap();
+    let max_contiguous_unknown = records
+        .iter()
+        .flat_map(|record| record.damage_groups.iter())
+        .max()
+        .unwrap();
 
     println!("unknown: {max_unknown} / max: {max_len}");
+    println!("max contiguous unknown: {max_contiguous_unknown}");
 
     let sum_of_valid_mappings = todo!();
     // println!("sum of valid mappings (pt 1): {sum_of_valid_mappings}");

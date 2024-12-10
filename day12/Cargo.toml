@@ -6,11 +6,11 @@ edition = "2021"
 
 [dependencies]
 aoclib = { git = "https://github.com/coriolinus/aoclib.git" }
-clap = { version = "4.4.11", features = ["derive"] }
-color-eyre = "0.5.10"
+clap = { version = "4.5.23", features = ["derive"] }
+color-eyre = "0.5.11"
 parse-display = "0.8.2"
 strum = { version = "0.25.0", features = ["derive"] }
-thiserror = "1.0.22"
+thiserror = "1.0.69"
 
 [dev-dependencies]
 rstest = { version = "0.18.2", default-features = false }
